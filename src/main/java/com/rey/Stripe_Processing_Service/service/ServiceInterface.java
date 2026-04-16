@@ -7,4 +7,6 @@ import org.springframework.stereotype.Service;
 @Service
 public interface ServiceInterface {
     PaymentResponse makePayment(CreatePaymentRequest paymentRequest);
+
+    PaymentResponse initiatePayment(String txnReference);
 }
