@@ -3,6 +3,7 @@ package com.rey.Stripe_Processing_Service.controller;
 import com.rey.Stripe_Processing_Service.dto.CreatePaymentRequest;
 import com.rey.Stripe_Processing_Service.dto.PaymentResponse;
 import com.rey.Stripe_Processing_Service.service.ServiceInterface;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -18,7 +19,7 @@ public class PaymentController {
         private final ServiceInterface serviceInterface;
 
         @PostMapping("create-payment/")
-    public ResponseEntity<PaymentResponse> createPayment(@RequestBody CreatePaymentRequest paymentRequest){
+    public ResponseEntity<PaymentResponse> createPayment(@RequestBody @Valid CreatePaymentRequest paymentRequest){
         log.info("Request made to create Payment: {}",paymentRequest);
             PaymentResponse paymentResponse = serviceInterface.makePayment(paymentRequest);
         log.info("Payment Response: {}",paymentResponse);

@@ -19,12 +19,17 @@ public class AppConfig {
     @Bean
     public ModelMapper modelMapper() {
         ModelMapper modelMapper = new ModelMapper();
+
         modelMapper.getConfiguration()
                 .setMatchingStrategy(MatchingStrategies.STRICT)
-                .setSkipNullEnabled(true)
-                .setFieldMatchingEnabled(true);
+                .setFieldMatchingEnabled(true)
+                .setFieldAccessLevel(org.modelmapper.config.Configuration.AccessLevel.PRIVATE)
+                .setSkipNullEnabled(false);
+
         return modelMapper;
     }
+    
+
 
 //    @Bean
 //    RestClient restClient(RestClient.Builder builder) {
