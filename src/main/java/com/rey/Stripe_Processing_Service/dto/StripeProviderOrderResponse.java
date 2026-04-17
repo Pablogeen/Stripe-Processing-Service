@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class StripeProviderCreateOrderResponse {
+public class StripeProviderOrderResponse {
 
 
     @JsonProperty("id")

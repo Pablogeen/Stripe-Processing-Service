@@ -9,4 +9,6 @@ public interface ServiceInterface {
     PaymentResponse makePayment(CreatePaymentRequest paymentRequest);
 
     PaymentResponse initiatePayment(String txnReference);
+
+    PaymentResponse confirmPayment(String txnReference);
 }

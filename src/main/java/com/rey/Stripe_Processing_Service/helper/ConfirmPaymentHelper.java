@@ -2,7 +2,7 @@ package com.rey.Stripe_Processing_Service.helper;
 
 import com.rey.Stripe_Processing_Service.client.StripeProviderClient;
 import com.rey.Stripe_Processing_Service.constants.ErrorCodeEnum;
-import com.rey.Stripe_Processing_Service.dto.StripeProviderCreateOrderRequest;
+import com.rey.Stripe_Processing_Service.dto.StripeProviderConfirmPaymentRequest;
 import com.rey.Stripe_Processing_Service.dto.StripeProviderOrderResponse;
 import com.rey.Stripe_Processing_Service.entity.Transaction;
 import com.rey.Stripe_Processing_Service.exception.StripeProcessingException;
@@ -16,19 +16,20 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class InitiatePaymentHelper {
+public class ConfirmPaymentHelper {
 
     private final StripeProviderClient providerClient;
 
     Transaction transaction = new Transaction();
 
-    @CircuitBreaker(name = "stripeProvider", fallbackMethod = "createOrderFallBack")
-    public StripeProviderOrderResponse makeCreateOrderCall(StripeProviderCreateOrderRequest orderRequest) {
-        log.info("About to make call to Provider Service to create order {}", orderRequest);
-
+    @CircuitBreaker(name = "stripeProvider", fallbackMethod = "confirmOrderFallBack")
+    public StripeProviderOrderResponse makeConfirmOrderCall(
+                        String providerReference, StripeProviderConfirmPaymentRequest paymentRequest){
+        log.info("About to make call to Provider service to confirm Order: ");
 
         try {
-            StripeProviderOrderResponse orderResponse = providerClient.createStripeOrder(orderRequest);
+            log.info("About to confirm order. providerReference={} request={}", providerReference, paymentRequest);
+            StripeProviderOrderResponse orderResponse = providerClient.confirmOrder(providerReference, paymentRequest);
             log.info("Provider Service has created order successfully");
             return orderResponse;
 
@@ -42,20 +43,21 @@ public class InitiatePaymentHelper {
         }catch (FeignException.FeignServerException ex){
             transaction.setErrorCode(ErrorCodeEnum.STRIPE_PROVIDER_SERVICE_UNAVAILABLE.getErrorCode());
             transaction.setErrorMessage(ErrorCodeEnum.STRIPE_PROVIDER_SERVICE_UNAVAILABLE.getErrorMessage());
-                        throw new StripeProcessingException(ErrorCodeEnum.STRIPE_PROVIDER_SERVICE_UNAVAILABLE.getErrorCode(),
+            throw new StripeProcessingException(ErrorCodeEnum.STRIPE_PROVIDER_SERVICE_UNAVAILABLE.getErrorCode(),
                     ErrorCodeEnum.STRIPE_PROVIDER_SERVICE_UNAVAILABLE.getErrorMessage(),
                     HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
-        public void createOrderFallBack(Throwable throwable) {
-            log.error("CircuitBreaker fallback: There's a problem with Provider Service: {}"
-                    ,throwable.getMessage());
+    public void confirmOrderFallBack(Throwable throwable) {
+        log.error("CircuitBreaker fallback: There's a problem with Provider Service: {}"
+                ,throwable.getMessage());
 
-            throw new StripeProcessingException(
-                    ErrorCodeEnum.STRIPE_PROVIDER_SERVICE_UNAVAILABLE.getErrorCode(),
-                    ErrorCodeEnum.STRIPE_PROVIDER_SERVICE_UNAVAILABLE.getErrorMessage(),
-                    HttpStatus.SERVICE_UNAVAILABLE
-            );
-        }
+        throw new StripeProcessingException(
+                ErrorCodeEnum.STRIPE_PROVIDER_SERVICE_UNAVAILABLE.getErrorCode(),
+                ErrorCodeEnum.STRIPE_PROVIDER_SERVICE_UNAVAILABLE.getErrorMessage(),
+                HttpStatus.SERVICE_UNAVAILABLE
+        );
+    }
+
 }
