@@ -8,6 +8,7 @@ import com.rey.Stripe_Processing_Service.dto.StripeProviderCreateOrderRequest;
 import com.rey.Stripe_Processing_Service.dto.StripeProviderCreateOrderResponse;
 import com.rey.Stripe_Processing_Service.entity.Transaction;
 import com.rey.Stripe_Processing_Service.exception.StripeProcessingException;
+import com.rey.Stripe_Processing_Service.helper.InitiatePaymentHelper;
 import com.rey.Stripe_Processing_Service.repository.TransactionRepository;
 import com.rey.Stripe_Processing_Service.service.ServiceInterface;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +26,7 @@ public class PaymentServiceImpl implements ServiceInterface {
 
     private final TransactionRepository paymentRepo;
     private final ModelMapper modelMapper;
-    private final StripeProviderClient providerClient;
+    private final InitiatePaymentHelper paymentHelper;
 
     @Override
     public PaymentResponse makePayment(CreatePaymentRequest paymentRequest) {
@@ -69,7 +70,7 @@ public class PaymentServiceImpl implements ServiceInterface {
       providerRequest.setCurrency(transaction.getCurrency());
 
       StripeProviderCreateOrderResponse createOrderResponse =
-                                        providerClient.createStripeOrder(providerRequest);
+                        paymentHelper.makeCreateOrderCall(providerRequest);
       log.info("Call made to Stripe Provider to Create Order");
 
       transaction.setProviderReference(createOrderResponse.getId());
