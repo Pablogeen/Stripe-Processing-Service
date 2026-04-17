@@ -9,15 +9,17 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "transactions")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Table(name = "transaction")
 public class Transaction {
 
     @Id
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+    @Column(name = "user_id")
     private Integer userId;
 
     private Integer paymentMethodId;
@@ -25,11 +27,12 @@ public class Transaction {
     private Integer paymentTypeId;
     private Integer txnStatusId;
 
-    private BigDecimal amount;
+    private Integer amount;
     private String currency;
 
     private String txnReference;
     private String providerReference;
+    private String clientSecret;
 
     private String errorCode;
     private String errorMessage;

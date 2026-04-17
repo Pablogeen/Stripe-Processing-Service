@@ -4,9 +4,11 @@ import com.rey.Stripe_Processing_Service.entity.Transaction;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
+
 @Repository
-public interface TransactionRepository extends JpaRepository<Transaction, Long> {
+public interface TransactionRepository extends JpaRepository<Transaction, Integer> {
 
 
-    Transaction findBytxnReference(String txnReference);
+    Optional<Transaction> findBytxnReference(String txnReference);
 }

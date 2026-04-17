@@ -51,7 +51,7 @@ CREATE TABLE payments.`Transaction_Status` (
 
 
 CREATE TABLE payments.`Transaction` (
-                                        `id` int NOT NULL AUTO_INCREMENT,
+                                        `id` bigint  NOT NULL AUTO_INCREMENT,
                                         `userId` int NOT NULL,
 
                                         `paymentMethodId` int NOT NULL,
@@ -59,12 +59,13 @@ CREATE TABLE payments.`Transaction` (
                                         `paymentTypeId` int NOT NULL,
                                         `txnStatusId` int NOT NULL,
 
-                                        `amount` decimal(19,2) DEFAULT '0.00',
+                                        `amount` int DEFAULT '0.00',
                                         `currency` varchar(3) NOT NULL,
 
 
                                         `txnReference` varchar(50) NOT NULL,
                                         `providerReference` varchar(100) DEFAULT NULL,
+                                        `clientSecret` varchar(50) NOT NULL,
 
                                         `errorCode` varchar(500) DEFAULT NULL,
                                         `errorMessage` varchar(1000) DEFAULT NULL,
@@ -85,8 +86,8 @@ CREATE TABLE payments.`Transaction` (
 
 
 CREATE TABLE payments.`Transaction_Log` (
-                                            `id` int NOT NULL AUTO_INCREMENT,
-                                            `transactionId` int NOT NULL,
+                                            `id` int  NOT NULL AUTO_INCREMENT,
+                                            `transactionId` bigint NOT NULL,
                                             `txnFromStatus` varchar(50) DEFAULT '-1',
                                             `txnToStatus` varchar(50) DEFAULT '-1',
                                             `creationDate` timestamp(2) NOT NULL DEFAULT CURRENT_TIMESTAMP(2),

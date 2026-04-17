@@ -13,7 +13,7 @@ VALUES(1, 'SALE', 1, '2025-10-10 21:30:42.05');
 
 INSERT INTO payments.Provider
 (id, providerName, status, creationDate)
-VALUES(1, 'PAYPAL', 1, '2025-10-10 21:31:28.08');
+VALUES(1, 'STRIPE', 1, '2025-10-10 21:31:28.08');
 
 
 INSERT INTO payments.Transaction_Status
