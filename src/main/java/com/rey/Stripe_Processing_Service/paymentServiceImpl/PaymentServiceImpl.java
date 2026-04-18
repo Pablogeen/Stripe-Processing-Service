@@ -15,6 +15,7 @@ import org.modelmapper.ModelMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
@@ -63,6 +64,8 @@ public class PaymentServiceImpl implements ServiceInterface {
 
        transaction.setTxnStatusId(2);
         log.info("Payment Status set to INITIATED");
+
+        transaction.setCreationDate(LocalDateTime.now());
 
       StripeProviderCreateOrderRequest providerRequest = new StripeProviderCreateOrderRequest();
 

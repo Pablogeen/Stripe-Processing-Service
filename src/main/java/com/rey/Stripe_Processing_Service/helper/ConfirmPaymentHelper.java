@@ -35,23 +35,25 @@ public class ConfirmPaymentHelper {
 
         }catch(FeignException.BadRequest ex){
             transaction.setErrorCode(ErrorCodeEnum.INVALID_REQUEST_ERROR.getErrorCode());
-            transaction.setErrorMessage(ErrorCodeEnum.INVALID_REQUEST_ERROR.getErrorMessage());
+            transaction.setErrorMessage(ex.contentUTF8());
             throw new StripeProcessingException(ErrorCodeEnum.INVALID_REQUEST.getErrorCode(),
-                    ErrorCodeEnum.INVALID_REQUEST.getErrorMessage(),
+                    ex.contentUTF8(),
                     HttpStatus.BAD_REQUEST);
+
+
 
         }catch (FeignException.FeignServerException ex){
             transaction.setErrorCode(ErrorCodeEnum.STRIPE_PROVIDER_SERVICE_UNAVAILABLE.getErrorCode());
-            transaction.setErrorMessage(ErrorCodeEnum.STRIPE_PROVIDER_SERVICE_UNAVAILABLE.getErrorMessage());
+            transaction.setErrorMessage(ex.contentUTF8());
             throw new StripeProcessingException(ErrorCodeEnum.STRIPE_PROVIDER_SERVICE_UNAVAILABLE.getErrorCode(),
-                    ErrorCodeEnum.STRIPE_PROVIDER_SERVICE_UNAVAILABLE.getErrorMessage(),
+                    ex.contentUTF8(),
                     HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
     public void confirmOrderFallBack(Throwable throwable) {
         log.error("CircuitBreaker fallback: There's a problem with Provider Service: {}"
-                ,throwable.getMessage());
+                ,throwable.getMessage().toString());
 
         throw new StripeProcessingException(
                 ErrorCodeEnum.STRIPE_PROVIDER_SERVICE_UNAVAILABLE.getErrorCode(),
