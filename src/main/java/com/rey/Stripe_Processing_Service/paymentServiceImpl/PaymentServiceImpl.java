@@ -4,6 +4,7 @@ import com.rey.Stripe_Processing_Service.constants.Constant;
 import com.rey.Stripe_Processing_Service.constants.ErrorCodeEnum;
 import com.rey.Stripe_Processing_Service.dto.*;
 import com.rey.Stripe_Processing_Service.entity.Transaction;
+import com.rey.Stripe_Processing_Service.entity.TransactionStatus;
 import com.rey.Stripe_Processing_Service.exception.StripeProcessingException;
 import com.rey.Stripe_Processing_Service.helper.ConfirmPaymentHelper;
 import com.rey.Stripe_Processing_Service.helper.InitiatePaymentHelper;
@@ -38,9 +39,11 @@ public class PaymentServiceImpl implements ServiceInterface {
         String txnReference = UUID.randomUUID().toString();
         transaction.setTxnReference(txnReference);
 
-        transaction.setTxnStatusId(1);
+        transaction.setStatus(TransactionStatus.CREATED);
         log.info("Payment Status set to CREATED");
         log.info("UserId: {}",transaction.getUserId());
+
+        transaction.setCreationDate(LocalDateTime.now());
 
        Transaction savedTransaction = paymentRepo.save(transaction);
        log.info("Transaction has being saved: {}",savedTransaction);
@@ -62,10 +65,9 @@ public class PaymentServiceImpl implements ServiceInterface {
                        ));
        log.info("Gotten Transaction with txnReference: {}",txnReference);
 
-       transaction.setTxnStatusId(2);
+       transaction.setStatus(TransactionStatus.INITIATED);
         log.info("Payment Status set to INITIATED");
 
-        transaction.setCreationDate(LocalDateTime.now());
 
       StripeProviderCreateOrderRequest providerRequest = new StripeProviderCreateOrderRequest();
 
@@ -82,7 +84,7 @@ public class PaymentServiceImpl implements ServiceInterface {
       transaction.setClientSecret(createOrderResponse.getClientSecret());
       log.info("Set Stripe client secret into the DB");
 
-      transaction.setTxnStatusId(3);
+      transaction.setStatus(TransactionStatus.PENDING);
       log.info("Payment Status set to PENDING");
 
       paymentRepo.save(transaction);
@@ -117,7 +119,7 @@ public class PaymentServiceImpl implements ServiceInterface {
         confirmPaymentHelper.makeConfirmOrderCall(providerReference, paymentRequest);
         log.info("Request made to Stripe Provider to confirm Order: ");
 
-        transaction.setTxnStatusId(5);
+        transaction.setStatus(TransactionStatus.SUCCESS);
         log.info("Payment set to Success");
 
         paymentRepo.save(transaction);

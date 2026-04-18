@@ -41,15 +41,6 @@ CREATE TABLE payments.`Provider` (
                                      PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE payments.`Transaction_Status` (
-                                               `id` int NOT NULL,
-                                               `name` varchar(50) NOT NULL,
-                                               `status` tinyint DEFAULT 1,
-                                               `creationDate` timestamp(2) NOT NULL DEFAULT CURRENT_TIMESTAMP(2),
-                                               PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-
 CREATE TABLE payments.`Transaction` (
                                         `id` bigint  NOT NULL AUTO_INCREMENT,
                                         `userId` int NOT NULL,
@@ -57,7 +48,7 @@ CREATE TABLE payments.`Transaction` (
                                         `paymentMethodId` int NOT NULL,
                                         `providerId` int NOT NULL,
                                         `paymentTypeId` int NOT NULL,
-                                        `txnStatusId` int NOT NULL,
+                                        `status` varchar(10) NOT NULL,
 
                                         `amount` int DEFAULT '0.00',
                                         `currency` varchar(3) NOT NULL,
@@ -76,11 +67,9 @@ CREATE TABLE payments.`Transaction` (
                                         UNIQUE KEY `transaction_txnReference` (`txnReference`),
                                         KEY `transaction_paymentMethodId` (`paymentMethodId`),
                                         KEY `transaction_providerId` (`providerId`),
-                                        KEY `transaction_txnStatusId` (`txnStatusId`),
                                         kEY `transaction_paymentTypeId` (`paymentTypeId`),
                                         CONSTRAINT `transaction_paymentMethodId` FOREIGN KEY (`paymentMethodId`) REFERENCES `Payment_Method` (`id`),
                                         CONSTRAINT `transaction_providerId` FOREIGN KEY (`providerId`) REFERENCES `Provider` (`id`),
-                                        CONSTRAINT `transaction_txnStatusId` FOREIGN KEY (`txnStatusId`) REFERENCES `Transaction_Status` (`id`),
                                         CONSTRAINT `transaction_paymentTypeId` FOREIGN KEY (`paymentTypeId`) REFERENCES `Payment_Type` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;
 

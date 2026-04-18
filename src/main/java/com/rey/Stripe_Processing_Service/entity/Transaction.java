@@ -25,7 +25,9 @@ public class Transaction {
     private Integer paymentMethodId;
     private Integer providerId;
     private Integer paymentTypeId;
-    private Integer txnStatusId;
+
+    @Enumerated(EnumType.STRING)
+    private TransactionStatus status;
 
     private Integer amount;
     private String currency;

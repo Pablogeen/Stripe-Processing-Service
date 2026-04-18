@@ -16,24 +16,3 @@ INSERT INTO payments.Provider
 VALUES(1, 'STRIPE', 1, '2025-10-10 21:31:28.08');
 
 
-INSERT INTO payments.Transaction_Status
-(id, name, status, creationDate)
-VALUES(1, 'CREATED', 1, '2025-10-10 21:33:39.84');
-INSERT INTO payments.Transaction_Status
-(id, name, status, creationDate)
-VALUES(2, 'INITIATED', 1, '2025-10-10 21:33:39.84');
-INSERT INTO payments.Transaction_Status
-(id, name, status, creationDate)
-VALUES(3, 'PENDING', 1, '2025-10-10 21:33:39.84');
-
-
-INSERT INTO payments.Transaction_Status
-(id, name, status, creationDate)
-VALUES(4, 'APPROVED', 1, '2025-10-10 21:33:39.84');
-
-INSERT INTO payments.Transaction_Status
-(id, name, status, creationDate)
-VALUES(5, 'SUCCESS', 1, '2025-10-10 21:33:39.84');
-INSERT INTO payments.Transaction_Status
-(id, name, status, creationDate)
-VALUES(6, 'FAILED', 1, '2025-10-10 21:33:39.84');
