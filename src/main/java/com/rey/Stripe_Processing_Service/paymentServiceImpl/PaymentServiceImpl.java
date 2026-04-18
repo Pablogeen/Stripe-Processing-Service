@@ -1,13 +1,11 @@
 package com.rey.Stripe_Processing_Service.paymentServiceImpl;
 
-import com.rey.Stripe_Processing_Service.client.StripeProviderClient;
+import com.rey.Stripe_Processing_Service.constants.Constant;
 import com.rey.Stripe_Processing_Service.constants.ErrorCodeEnum;
-import com.rey.Stripe_Processing_Service.dto.CreatePaymentRequest;
-import com.rey.Stripe_Processing_Service.dto.PaymentResponse;
-import com.rey.Stripe_Processing_Service.dto.StripeProviderCreateOrderRequest;
-import com.rey.Stripe_Processing_Service.dto.StripeProviderCreateOrderResponse;
+import com.rey.Stripe_Processing_Service.dto.*;
 import com.rey.Stripe_Processing_Service.entity.Transaction;
 import com.rey.Stripe_Processing_Service.exception.StripeProcessingException;
+import com.rey.Stripe_Processing_Service.helper.ConfirmPaymentHelper;
 import com.rey.Stripe_Processing_Service.helper.InitiatePaymentHelper;
 import com.rey.Stripe_Processing_Service.repository.TransactionRepository;
 import com.rey.Stripe_Processing_Service.service.ServiceInterface;
@@ -17,6 +15,7 @@ import org.modelmapper.ModelMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
@@ -27,6 +26,8 @@ public class PaymentServiceImpl implements ServiceInterface {
     private final TransactionRepository paymentRepo;
     private final ModelMapper modelMapper;
     private final InitiatePaymentHelper paymentHelper;
+    private final ConfirmPaymentHelper confirmPaymentHelper;
+
 
     @Override
     public PaymentResponse makePayment(CreatePaymentRequest paymentRequest) {
@@ -59,22 +60,24 @@ public class PaymentServiceImpl implements ServiceInterface {
                                ErrorCodeEnum.INVALID_TRANSACTION_REFERENCE.getErrorMessage(),
                                HttpStatus.BAD_REQUEST
                        ));
-       log.info("Gotten Transaction with txnReference: {}",transaction);
+       log.info("Gotten Transaction with txnReference: {}",txnReference);
 
        transaction.setTxnStatusId(2);
         log.info("Payment Status set to INITIATED");
+
+        transaction.setCreationDate(LocalDateTime.now());
 
       StripeProviderCreateOrderRequest providerRequest = new StripeProviderCreateOrderRequest();
 
       providerRequest.setAmount(transaction.getAmount());
       providerRequest.setCurrency(transaction.getCurrency());
 
-      StripeProviderCreateOrderResponse createOrderResponse =
+      StripeProviderOrderResponse createOrderResponse =
                         paymentHelper.makeCreateOrderCall(providerRequest);
       log.info("Call made to Stripe Provider to Create Order");
 
       transaction.setProviderReference(createOrderResponse.getId());
-      log.info("Set stripe create order id into DB");
+      log.info("Set stripe create order id into DB: {}",transaction.getProviderReference());
 
       transaction.setClientSecret(createOrderResponse.getClientSecret());
       log.info("Set Stripe client secret into the DB");
@@ -82,10 +85,47 @@ public class PaymentServiceImpl implements ServiceInterface {
       transaction.setTxnStatusId(3);
       log.info("Payment Status set to PENDING");
 
+      paymentRepo.save(transaction);
+      log.info("Saved transaction detailes");
+
       PaymentResponse paymentResponse = modelMapper.map(transaction, PaymentResponse.class);
       log.info("Mapped transaction information into PaymentResponse: ");
 
       return paymentResponse;
+
+    }
+
+    @Override
+    public PaymentResponse confirmPayment(String txnReference) {
+
+        Transaction  transaction = paymentRepo.findBytxnReference(txnReference)
+                .orElseThrow(() -> new StripeProcessingException(
+                        ErrorCodeEnum.INVALID_TRANSACTION_REFERENCE.getErrorCode(),
+                        ErrorCodeEnum.INVALID_TRANSACTION_REFERENCE.getErrorMessage(),
+                        HttpStatus.BAD_REQUEST
+                ));
+        log.info(" Transaction with txnReference: {}",txnReference);
+
+
+        String providerReference = transaction.getProviderReference();
+        log.info("Got the provider Reference from the DB: {}",providerReference);
+
+        StripeProviderConfirmPaymentRequest paymentRequest = new StripeProviderConfirmPaymentRequest();
+        paymentRequest.setReturnUrl(Constant.RETURN_URL);
+        log.info("Return Url: {}",paymentRequest.getReturnUrl());
+
+        confirmPaymentHelper.makeConfirmOrderCall(providerReference, paymentRequest);
+        log.info("Request made to Stripe Provider to confirm Order: ");
+
+        transaction.setTxnStatusId(5);
+        log.info("Payment set to Success");
+
+        paymentRepo.save(transaction);
+
+        PaymentResponse paymentResponse = modelMapper.map(transaction, PaymentResponse.class);
+        log.info("Mapped transaction details into PaymentResponse: ");
+
+        return paymentResponse;
 
     }
 }

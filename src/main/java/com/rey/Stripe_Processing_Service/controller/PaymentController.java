@@ -35,4 +35,12 @@ public class PaymentController {
             return new ResponseEntity<>(paymentResponse, HttpStatus.OK);
     }
 
+    @PostMapping("/{txnReference}/confirm-payment/")
+    public ResponseEntity<PaymentResponse> confirmPayment(@PathVariable String txnReference){
+        log.info("Request made to confirm Payment with txnReference: {}",txnReference);
+        PaymentResponse paymentResponse = serviceInterface.confirmPayment(txnReference);
+        log.info("Payment has been confirmed Successfully: {}",paymentResponse);
+        return new ResponseEntity<>(paymentResponse, HttpStatus.OK);
+    }
+
 }
