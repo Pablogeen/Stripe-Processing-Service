@@ -8,6 +8,6 @@ import lombok.Data;
 public class PaymentResponse {
 
     private String txnReference;
-    private int txnStatusId;
+    private String status;
     private String providerReference;
 }
