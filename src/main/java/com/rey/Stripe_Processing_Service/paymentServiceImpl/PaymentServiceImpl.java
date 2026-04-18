@@ -116,6 +116,7 @@ public class PaymentServiceImpl implements ServiceInterface {
         paymentRequest.setReturnUrl(Constant.RETURN_URL);
         log.info("Return Url: {}",paymentRequest.getReturnUrl());
 
+        transaction.setStatus(TransactionStatus.APPROVED);
         confirmPaymentHelper.makeConfirmOrderCall(providerReference, paymentRequest);
         log.info("Request made to Stripe Provider to confirm Order: ");
 

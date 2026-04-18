@@ -5,6 +5,7 @@ import com.rey.Stripe_Processing_Service.constants.ErrorCodeEnum;
 import com.rey.Stripe_Processing_Service.dto.StripeProviderConfirmPaymentRequest;
 import com.rey.Stripe_Processing_Service.dto.StripeProviderOrderResponse;
 import com.rey.Stripe_Processing_Service.entity.Transaction;
+import com.rey.Stripe_Processing_Service.entity.TransactionStatus;
 import com.rey.Stripe_Processing_Service.exception.StripeProcessingException;
 import feign.FeignException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
@@ -22,7 +23,7 @@ public class ConfirmPaymentHelper {
 
     Transaction transaction = new Transaction();
 
-    @CircuitBreaker(name = "stripeProvider", fallbackMethod = "confirmOrderFallBack")
+    @CircuitBreaker(name = "paymentService", fallbackMethod = "confirmOrderFallBack")
     public StripeProviderOrderResponse makeConfirmOrderCall(
                         String providerReference, StripeProviderConfirmPaymentRequest paymentRequest){
         log.info("About to make call to Provider service to confirm Order: ");
@@ -34,6 +35,7 @@ public class ConfirmPaymentHelper {
             return orderResponse;
 
         }catch(FeignException.BadRequest ex){
+            transaction.setStatus(TransactionStatus.FAILED);
             transaction.setErrorCode(ErrorCodeEnum.INVALID_REQUEST_ERROR.getErrorCode());
             transaction.setErrorMessage(ex.contentUTF8());
             throw new StripeProcessingException(ErrorCodeEnum.INVALID_REQUEST.getErrorCode(),
@@ -43,6 +45,7 @@ public class ConfirmPaymentHelper {
 
 
         }catch (FeignException.FeignServerException ex){
+            transaction.setStatus(TransactionStatus.FAILED);
             transaction.setErrorCode(ErrorCodeEnum.STRIPE_PROVIDER_SERVICE_UNAVAILABLE.getErrorCode());
             transaction.setErrorMessage(ex.contentUTF8());
             throw new StripeProcessingException(ErrorCodeEnum.STRIPE_PROVIDER_SERVICE_UNAVAILABLE.getErrorCode(),

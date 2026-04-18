@@ -9,10 +9,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.server.ResponseStatusException;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 
 @RestControllerAdvice
@@ -41,19 +38,12 @@ public class GlobalExceptionHandler {
         String message = Optional.ofNullable(ex.getBindingResult().getFieldError())
                 .map(FieldError::getDefaultMessage)
                 .orElse("Validation error");
-        
+
         return ResponseEntity.badRequest().body(new ErrorResponse(
                 ErrorCodeEnum.INVALID_REQUEST.getErrorCode(),
                 message
         ));
     }
 
-    @ExceptionHandler(ResponseStatusException.class)
-    public ResponseEntity<Map<String, Object>> handleResponseStatusException(ResponseStatusException ex) {
-        Map<String, Object> error = new HashMap<>();
-        error.put("status", ex.getStatusCode().value());
-        error.put("message", ex.getReason());   // This is the message from the downstream service
-        return ResponseEntity.status(ex.getStatusCode()).body(error);
-    }
 
 }
