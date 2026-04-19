@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+
+  # --- MySQL Database ---
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: payments
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - stripe-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # --- Stripe Processing Service ---
+  stripe-processing-service:
+    build:
+      context: .
+    container_name: stripe-processing-service
+    ports:
+      - "2222:2222"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/payments
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+    networks:
+      - stripe-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+networks:
+  stripe-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
