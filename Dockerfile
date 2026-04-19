@@ -10,5 +10,5 @@ FROM amazoncorretto:21
 WORKDIR /app
 LABEL authors="BEN & CO"
 COPY --from=build /app/target/*.jar Stripe-Processing-Service.jar
-EXPOSE 1111
+EXPOSE 2222
 ENTRYPOINT ["java", "-jar", "Stripe-Processing-Service.jar"]
