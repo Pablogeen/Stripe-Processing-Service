@@ -17,7 +17,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, PROCESS, REFERENCES,
 -- GRANT END Either this.
 
 -- Create Tables payments Schema Start***
-CREATE TABLE payments_8xpe.`Payment_Method` (
+CREATE TABLE IF NOT EXISTS payments_8xpe.`Payment_Method` (
                                            `id` int NOT NULL,
                                            `name` varchar(50) NOT NULL,
                                            `status` tinyint DEFAULT 1,
@@ -25,7 +25,8 @@ CREATE TABLE payments_8xpe.`Payment_Method` (
                                            PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE payments_8xpe.`Payment_Type` (
+
+CREATE TABLE IF NOT EXISTS payments_8xpe.`Payment_Type` (
                                          `id` int NOT NULL,
                                          `type` varchar(50) NOT NULL,
                                          `status` tinyint DEFAULT 1,
@@ -33,7 +34,7 @@ CREATE TABLE payments_8xpe.`Payment_Type` (
                                          PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE payments_8xpe.`Provider` (
+CREATE TABLE IF NOT EXISTS payments_8xpe.`Provider` (
                                      `id` int NOT NULL AUTO_INCREMENT,
                                      `providerName` varchar(50) NOT NULL,
                                      `status` tinyint DEFAULT 1,
@@ -41,7 +42,7 @@ CREATE TABLE payments_8xpe.`Provider` (
                                      PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE payments_8xpe.`Transaction` (
+CREATE TABLE IF NOT EXISTS payments_8xpe.`Transaction` (
                                         `id` bigint  NOT NULL AUTO_INCREMENT,
                                         `userId` int NOT NULL,
 
@@ -74,7 +75,7 @@ CREATE TABLE payments_8xpe.`Transaction` (
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;
 
 
-CREATE TABLE payments_8xpe.`Transaction_Log` (
+CREATE TABLE IF NOT EXISTS payments_8xpe.`Transaction_Log` (
                                             `id` int  NOT NULL AUTO_INCREMENT,
                                             `transactionId` bigint NOT NULL,
                                             `txnFromStatus` varchar(50) DEFAULT '-1',
