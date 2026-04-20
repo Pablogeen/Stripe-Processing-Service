@@ -1,9 +1,9 @@
-DROP DATABASE IF EXISTS payments;
+DROP DATABASE IF EXISTS payments_8xpe;
 
 DROP USER IF EXISTS 'payments'@'%';
 
 -- Creates databases // /**/
-CREATE DATABASE payments;
+CREATE DATABASE payments_8xpe;
 
 -- Creates user & grants permission
 CREATE USER 'payments'@'%' IDENTIFIED BY 'P9v@tX3#nLz!Q8wK';
@@ -17,7 +17,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, PROCESS, REFERENCES,
 -- GRANT END Either this.
 
 -- Create Tables payments Schema Start***
-CREATE TABLE payments.`Payment_Method` (
+CREATE TABLE payments_8xpe.`Payment_Method` (
                                            `id` int NOT NULL,
                                            `name` varchar(50) NOT NULL,
                                            `status` tinyint DEFAULT 1,
@@ -25,7 +25,7 @@ CREATE TABLE payments.`Payment_Method` (
                                            PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE payments.`Payment_Type` (
+CREATE TABLE payments_8xpe.`Payment_Type` (
                                          `id` int NOT NULL,
                                          `type` varchar(50) NOT NULL,
                                          `status` tinyint DEFAULT 1,
@@ -33,7 +33,7 @@ CREATE TABLE payments.`Payment_Type` (
                                          PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE payments.`Provider` (
+CREATE TABLE payments_8xpe.`Provider` (
                                      `id` int NOT NULL AUTO_INCREMENT,
                                      `providerName` varchar(50) NOT NULL,
                                      `status` tinyint DEFAULT 1,
@@ -41,7 +41,7 @@ CREATE TABLE payments.`Provider` (
                                      PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE payments.`Transaction` (
+CREATE TABLE payments_8xpe.`Transaction` (
                                         `id` bigint  NOT NULL AUTO_INCREMENT,
                                         `userId` int NOT NULL,
 
@@ -74,7 +74,7 @@ CREATE TABLE payments.`Transaction` (
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;
 
 
-CREATE TABLE payments.`Transaction_Log` (
+CREATE TABLE payments_8xpe.`Transaction_Log` (
                                             `id` int  NOT NULL AUTO_INCREMENT,
                                             `transactionId` bigint NOT NULL,
                                             `txnFromStatus` varchar(50) DEFAULT '-1',
