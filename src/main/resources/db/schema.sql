@@ -1,88 +1,66 @@
-DROP DATABASE IF EXISTS payments_8xpe;
-
-DROP USER IF EXISTS 'payments'@'%';
-
--- Creates databases // /**/
-CREATE DATABASE payments_8xpe;
-
--- Creates user & grants permission
-CREATE USER 'payments'@'%' IDENTIFIED BY 'P9v@tX3#nLz!Q8wK';
-
-
--- GRANT START Either this 
--- GRANT ALL ON *.* TO 'payments'@'%' ;
-
--- or this
-GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, PROCESS, REFERENCES, INDEX, ALTER, SHOW DATABASES, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, REPLICATION SLAVE, REPLICATION CLIENT, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, CREATE USER, EVENT, TRIGGER ON *.* TO 'payments'@'%' ;
--- GRANT END Either this.
-
 -- Create Tables payments Schema Start***
-CREATE TABLE IF NOT EXISTS payments_8xpe.`Payment_Method` (
-                                           `id` int NOT NULL,
-                                           `name` varchar(50) NOT NULL,
-                                           `status` tinyint DEFAULT 1,
-                                           `creationDate` timestamp(2) NOT NULL DEFAULT CURRENT_TIMESTAMP(2),
-                                           PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS "Payment_Method" (
+                                                "id"           INT          NOT NULL,
+                                                "name"         VARCHAR(50)  NOT NULL,
+                                                "status"       SMALLINT     DEFAULT 1,
+                                                "creationDate" TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                                PRIMARY KEY ("id")
+);
 
-CREATE TABLE IF NOT EXISTS payments_8xpe.`Payment_Type` (
-                                         `id` int NOT NULL,
-                                         `type` varchar(50) NOT NULL,
-                                         `status` tinyint DEFAULT 1,
-                                         `creationDate` timestamp(2) NOT NULL DEFAULT CURRENT_TIMESTAMP(2),
-                                         PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS "Payment_Type" (
+                                              "id"           INT          NOT NULL,
+                                              "type"         VARCHAR(50)  NOT NULL,
+                                              "status"       SMALLINT     DEFAULT 1,
+                                              "creationDate" TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                              PRIMARY KEY ("id")
+);
 
-CREATE TABLE IF NOT EXISTS payments_8xpe.`Provider` (
-                                     `id` int NOT NULL AUTO_INCREMENT,
-                                     `providerName` varchar(50) NOT NULL,
-                                     `status` tinyint DEFAULT 1,
-                                     `creationDate` timestamp(2) NOT NULL DEFAULT CURRENT_TIMESTAMP(2),
-                                     PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS "Provider" (
+                                          "id"           SERIAL,
+                                          "providerName" VARCHAR(50)  NOT NULL,
+                                          "status"       SMALLINT     DEFAULT 1,
+                                          "creationDate" TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                          PRIMARY KEY ("id")
+);
 
-CREATE TABLE IF NOT EXISTS payments_8xpe.`Transaction` (
-                                        `id` bigint  NOT NULL AUTO_INCREMENT,
-                                        `userId` int NOT NULL,
+CREATE TABLE IF NOT EXISTS "Transaction" (
+                                             "id"                BIGSERIAL,
+                                             "userId"            INT           NOT NULL,
+                                             "paymentMethodId"   INT           NOT NULL,
+                                             "providerId"        INT           NOT NULL,
+                                             "paymentTypeId"     INT           NOT NULL,
+                                             "status"            VARCHAR(10)   NOT NULL,
+                                             "amount"            INT           DEFAULT 0,
+                                             "currency"          VARCHAR(3)    NOT NULL,
+                                             "txnReference"      VARCHAR(50)   NOT NULL,
+                                             "providerReference" VARCHAR(100)  DEFAULT NULL,
+                                             "clientSecret"      VARCHAR(50)   NOT NULL,
+                                             "errorCode"         VARCHAR(500)  DEFAULT NULL,
+                                             "errorMessage"      VARCHAR(1000) DEFAULT NULL,
+                                             "creationDate"      TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                             "retryCount"        INT           DEFAULT 0,
+                                             PRIMARY KEY ("id"),
+                                             UNIQUE ("txnReference"),
+                                             CONSTRAINT "transaction_paymentMethodId" FOREIGN KEY ("paymentMethodId") REFERENCES "Payment_Method" ("id"),
+                                             CONSTRAINT "transaction_providerId"      FOREIGN KEY ("providerId")      REFERENCES "Provider" ("id"),
+                                             CONSTRAINT "transaction_paymentTypeId"   FOREIGN KEY ("paymentTypeId")   REFERENCES "Payment_Type" ("id")
+);
 
-                                        `paymentMethodId` int NOT NULL,
-                                        `providerId` int NOT NULL,
-                                        `paymentTypeId` int NOT NULL,
-                                        `status` varchar(10) NOT NULL,
+CREATE INDEX IF NOT EXISTS "idx_transaction_paymentMethodId" ON "Transaction" ("paymentMethodId");
+CREATE INDEX IF NOT EXISTS "idx_transaction_providerId"      ON "Transaction" ("providerId");
+CREATE INDEX IF NOT EXISTS "idx_transaction_paymentTypeId"   ON "Transaction" ("paymentTypeId");
 
-                                        `amount` int DEFAULT '0.00',
-                                        `currency` varchar(3) NOT NULL,
+CREATE TABLE IF NOT EXISTS "Transaction_Log" (
+                                                 "id"            SERIAL,
+                                                 "transactionId" BIGINT      NOT NULL,
+                                                 "txnFromStatus" VARCHAR(50) DEFAULT '-1',
+                                                 "txnToStatus"   VARCHAR(50) DEFAULT '-1',
+                                                 "creationDate"  TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                                 PRIMARY KEY ("id"),
+                                                 CONSTRAINT "transaction_log_transactionId" FOREIGN KEY ("transactionId") REFERENCES "Transaction" ("id")
+);
 
+CREATE INDEX IF NOT EXISTS "idx_transaction_log_transactionId" ON "Transaction_Log" ("transactionId");
 
-                                        `txnReference` varchar(50) NOT NULL,
-                                        `providerReference` varchar(100) DEFAULT NULL,
-                                        `clientSecret` varchar(50) NOT NULL,
-
-                                        `errorCode` varchar(500) DEFAULT NULL,
-                                        `errorMessage` varchar(1000) DEFAULT NULL,
-
-                                        `creationDate` timestamp(2) NOT NULL DEFAULT CURRENT_TIMESTAMP(2),
-                                        `retryCount` int DEFAULT 0,
-                                        PRIMARY KEY (`id`),
-                                        UNIQUE KEY `transaction_txnReference` (`txnReference`),
-                                        KEY `transaction_paymentMethodId` (`paymentMethodId`),
-                                        KEY `transaction_providerId` (`providerId`),
-                                        kEY `transaction_paymentTypeId` (`paymentTypeId`),
-                                        CONSTRAINT `transaction_paymentMethodId` FOREIGN KEY (`paymentMethodId`) REFERENCES `Payment_Method` (`id`),
-                                        CONSTRAINT `transaction_providerId` FOREIGN KEY (`providerId`) REFERENCES `Provider` (`id`),
-                                        CONSTRAINT `transaction_paymentTypeId` FOREIGN KEY (`paymentTypeId`) REFERENCES `Payment_Type` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;
-
-
-CREATE TABLE IF NOT EXISTS payments_8xpe.`Transaction_Log` (
-                                            `id` int  NOT NULL AUTO_INCREMENT,
-                                            `transactionId` bigint NOT NULL,
-                                            `txnFromStatus` varchar(50) DEFAULT '-1',
-                                            `txnToStatus` varchar(50) DEFAULT '-1',
-                                            `creationDate` timestamp(2) NOT NULL DEFAULT CURRENT_TIMESTAMP(2),
-                                            PRIMARY KEY (`id`),
-                                            KEY `transaction_log_transactionId` (`transactionId`),
-                                            CONSTRAINT `transaction_log_transactionId` FOREIGN KEY (`transactionId`) REFERENCES `Transaction` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 -- Create Tables payments Schema End***
