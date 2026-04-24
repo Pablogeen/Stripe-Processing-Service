@@ -68,22 +68,24 @@ public class PaymentServiceImpl implements ServiceInterface {
                 paymentRepo.updateStatus(txnReference, TransactionStatus.INITIATED, TransactionStatus.CREATED);
         log.info("Updated the status to check Idempotency and race conditions: {}", updatedStatus);
 
-
-        String idempotencyKey  = txnReference + "_create";
-        log.info("IdempotencyKey {}", idempotencyKey);
-
-        if (updatedStatus == 0) {
-            //Trying to retry with already INITIATED txnReference
-            //What if status is INITIATED and got no provider Reference
-          retryHelper.createOrderRetry(txnReference, idempotencyKey);
-        }
-
         Transaction transaction = paymentRepo.findBytxnReference(txnReference)
                 .orElseThrow(() -> new StripeProcessingException(
                         ErrorCodeEnum.INVALID_TRANSACTION_REFERENCE.getErrorCode(),
                         ErrorCodeEnum.INVALID_TRANSACTION_REFERENCE.getErrorMessage(),
                         HttpStatus.BAD_REQUEST));
         log.info("Gotten Transaction with txnReference: {}", txnReference);
+
+
+        String idempotencyKey  = txnReference + "_create";
+        log.info("Create Idempotency {}", idempotencyKey);
+
+        if (updatedStatus == 0) {
+            //Trying to retry with already INITIATED txnReference
+            //What if status is INITIATED and got no provider Reference
+          retryHelper.createOrderRetry(transaction, idempotencyKey);
+        }
+
+
 
         providerRequest = new StripeProviderCreateOrderRequest();
         providerRequest.setAmount(transaction.getAmount());
@@ -121,32 +123,21 @@ public class PaymentServiceImpl implements ServiceInterface {
                 paymentRepo.updateStatus(txnReference, TransactionStatus.APPROVED, TransactionStatus.PENDING);
         log.info("Confirm race check: {}", updatedStatus);
 
+
+        String idempotencyKey = txnReference + "_confirm";
+        log.info("Confirm Idempotency {}", idempotencyKey);
+
         Transaction transaction = paymentRepo.findBytxnReference(txnReference)
                 .orElseThrow(() -> new StripeProcessingException(
                         ErrorCodeEnum.INVALID_TRANSACTION_REFERENCE.getErrorCode(),
                         ErrorCodeEnum.INVALID_TRANSACTION_REFERENCE.getErrorMessage(),
-                        HttpStatus.BAD_REQUEST
-                ));
+                        HttpStatus.BAD_REQUEST));
         log.info(" Transaction with txnReference: {}", txnReference);
 
         if (updatedStatus == 0) {
+            retryHelper.confirmOrderRetry(transaction, idempotencyKey);
+            log.info("Checked on retries and idempotency");
             // Already SUCCESS? Return cached
-            if (transaction.getStatus() == TransactionStatus.SUCCESS) {
-                return modelMapper.map(transaction, PaymentResponse.class);
-            }
-
-            // Stuck at APPROVED with no confirm result? Proceed to Stripe below
-            if (transaction.getStatus() == TransactionStatus.APPROVED) {
-                log.info("Recovery: stuck at APPROVED, retrying Stripe confirm");
-                // Let's continue to confirm payment.
-
-
-            } else {
-                throw new StripeProcessingException(
-                        ErrorCodeEnum.INVALID_TRANSACTION_STATE.getErrorCode(),
-                        ErrorCodeEnum.INVALID_TRANSACTION_STATE.getErrorMessage()+transaction.getStatus(),
-                        HttpStatus.CONFLICT);
-            }
         }
 
                 String providerReference = transaction.getProviderReference();
@@ -161,7 +152,7 @@ public class PaymentServiceImpl implements ServiceInterface {
                     );
                 }
 
-                String idempotencyKey = txnReference + "_confirm";
+
 
                 StripeProviderConfirmPaymentRequest paymentRequest = new StripeProviderConfirmPaymentRequest();
                 paymentRequest.setReturnUrl(Constant.RETURN_URL);
@@ -182,6 +173,8 @@ public class PaymentServiceImpl implements ServiceInterface {
                 return paymentResponse;
 
             }
-        }
+
+
+}
 
 
