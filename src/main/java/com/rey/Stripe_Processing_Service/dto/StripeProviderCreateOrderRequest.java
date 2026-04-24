@@ -22,4 +22,6 @@ public class StripeProviderCreateOrderRequest {
     @Pattern(regexp = "^[a-zA-Z]{3}$", message = "Currency must contain only letters")
     private String currency;
 
+    private String idempotencyKey;
+
 }
