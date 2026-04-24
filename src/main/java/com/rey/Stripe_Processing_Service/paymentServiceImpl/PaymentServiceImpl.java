@@ -8,6 +8,7 @@ import com.rey.Stripe_Processing_Service.entity.TransactionStatus;
 import com.rey.Stripe_Processing_Service.exception.StripeProcessingException;
 import com.rey.Stripe_Processing_Service.helper.ConfirmPaymentHelper;
 import com.rey.Stripe_Processing_Service.helper.InitiatePaymentHelper;
+import com.rey.Stripe_Processing_Service.helper.RetryHelper;
 import com.rey.Stripe_Processing_Service.repository.TransactionRepository;
 import com.rey.Stripe_Processing_Service.service.ServiceInterface;
 import jakarta.transaction.Transactional;
@@ -29,6 +30,7 @@ public class PaymentServiceImpl implements ServiceInterface {
     private final ModelMapper modelMapper;
     private final InitiatePaymentHelper paymentHelper;
     private final ConfirmPaymentHelper confirmPaymentHelper;
+    private final RetryHelper retryHelper;
 
 
     @Transactional
@@ -67,56 +69,13 @@ public class PaymentServiceImpl implements ServiceInterface {
         log.info("Updated the status to check Idempotency and race conditions: {}", updatedStatus);
 
 
-
         String idempotencyKey  = txnReference + "_create";
         log.info("IdempotencyKey {}", idempotencyKey);
 
         if (updatedStatus == 0) {
             //Trying to retry with already INITIATED txnReference
             //What if status is INITIATED and got no provider Reference
-            providerRequest = new StripeProviderCreateOrderRequest();
-
-            Transaction transaction = paymentRepo.findBytxnReference(txnReference)
-                    .orElseThrow(() -> new StripeProcessingException(
-                            ErrorCodeEnum.INVALID_TRANSACTION_REFERENCE.getErrorCode(),
-                            ErrorCodeEnum.INVALID_TRANSACTION_REFERENCE.getErrorMessage(),
-                            HttpStatus.BAD_REQUEST));
-            log.info("Gotten Transaction with txnReference: {}", txnReference);
-            //Retry
-            if (transaction.getStatus() == TransactionStatus.INITIATED && transaction.getProviderReference() == null) {
-                // Query Stripe using our  idempotency key
-                providerRequest.setAmount(transaction.getAmount());
-                providerRequest.setCurrency(transaction.getCurrency());
-                providerRequest.setIdempotencyKey(idempotencyKey);
-                log.info("Set the amount and currency into the Request: {} {}"
-                        , providerRequest.getAmount(), providerRequest.getCurrency());
-
-                StripeProviderOrderResponse createOrderResponse =
-                        paymentHelper.makeCreateOrderCall(providerRequest);
-                log.info("Call made to Stripe Provider to Create Order: {}",providerRequest);
-
-                //Stripe have created or not created a request because of breakages,
-                // it creates a new one or with the idempotency key
-                if (createOrderResponse != null) {
-                    transaction.setProviderReference(createOrderResponse.getId());
-                    transaction.setClientSecret(createOrderResponse.getClientSecret());
-                    transaction.setStatus(TransactionStatus.PENDING);
-                    paymentRepo.save(transaction);
-                }
-
-                PaymentResponse paymentResponse = modelMapper.map(transaction, PaymentResponse.class);
-                log.info("Mapped retried transaction to paymentResponse: {}", paymentResponse);
-
-                return paymentResponse;
-
-            }
-            if (transaction.getStatus() == TransactionStatus.PENDING ||
-                                                transaction.getStatus() == TransactionStatus.SUCCESS) {
-                PaymentResponse paymentResponse = modelMapper.map(transaction, PaymentResponse.class);
-                log.info("Mapped transaction to paymentResponse for Pending and success squads: {}",paymentResponse);
-
-                return paymentResponse;
-            }
+          retryHelper.createOrderRetry(txnReference, idempotencyKey);
         }
 
         Transaction transaction = paymentRepo.findBytxnReference(txnReference)
