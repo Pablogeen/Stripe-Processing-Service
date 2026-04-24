@@ -9,4 +9,6 @@ public class StripeProviderConfirmPaymentRequest {
     @JsonProperty("return_url")
     private String returnUrl;
 
+    private String idempotencyKey;
+
 }

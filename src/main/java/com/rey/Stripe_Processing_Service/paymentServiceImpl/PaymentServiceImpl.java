@@ -10,6 +10,7 @@ import com.rey.Stripe_Processing_Service.helper.ConfirmPaymentHelper;
 import com.rey.Stripe_Processing_Service.helper.InitiatePaymentHelper;
 import com.rey.Stripe_Processing_Service.repository.TransactionRepository;
 import com.rey.Stripe_Processing_Service.service.ServiceInterface;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
@@ -30,6 +31,7 @@ public class PaymentServiceImpl implements ServiceInterface {
     private final ConfirmPaymentHelper confirmPaymentHelper;
 
 
+    @Transactional
     @Override
     public PaymentResponse makePayment(CreatePaymentRequest paymentRequest) {
 
@@ -54,81 +56,173 @@ public class PaymentServiceImpl implements ServiceInterface {
         return paymentResponse;
     }
 
+    @Transactional
     @Override
     public PaymentResponse initiatePayment(String txnReference) {
 
-       Transaction  transaction = paymentRepo.findBytxnReference(txnReference)
-                       .orElseThrow(() -> new StripeProcessingException(
-                               ErrorCodeEnum.INVALID_TRANSACTION_REFERENCE.getErrorCode(),
-                               ErrorCodeEnum.INVALID_TRANSACTION_REFERENCE.getErrorMessage(),
-                               HttpStatus.BAD_REQUEST
-                       ));
-       log.info("Gotten Transaction with txnReference: {}",txnReference);
+        StripeProviderCreateOrderRequest providerRequest;
 
-       transaction.setStatus(TransactionStatus.INITIATED);
-        log.info("Payment Status set to INITIATED");
+        int updatedStatus =
+                paymentRepo.updateStatus(txnReference, TransactionStatus.INITIATED, TransactionStatus.CREATED);
+        log.info("Updated the status to check Idempotency and race conditions: {}", updatedStatus);
 
 
-      StripeProviderCreateOrderRequest providerRequest = new StripeProviderCreateOrderRequest();
 
-      providerRequest.setAmount(transaction.getAmount());
-      providerRequest.setCurrency(transaction.getCurrency());
+        String idempotencyKey  = txnReference + "_create";
+        log.info("IdempotencyKey {}", idempotencyKey);
 
-      StripeProviderOrderResponse createOrderResponse =
+        if (updatedStatus == 0) {
+            //Trying to retry with already INITIATED txnReference
+            //What if status is INITIATED and got no provider Reference
+            providerRequest = new StripeProviderCreateOrderRequest();
+
+            Transaction transaction = paymentRepo.findBytxnReference(txnReference)
+                    .orElseThrow(() -> new StripeProcessingException(
+                            ErrorCodeEnum.INVALID_TRANSACTION_REFERENCE.getErrorCode(),
+                            ErrorCodeEnum.INVALID_TRANSACTION_REFERENCE.getErrorMessage(),
+                            HttpStatus.BAD_REQUEST));
+            log.info("Gotten Transaction with txnReference: {}", txnReference);
+            //Retry
+            if (transaction.getStatus() == TransactionStatus.INITIATED && transaction.getProviderReference() == null) {
+                // Query Stripe using our  idempotency key
+                providerRequest.setAmount(transaction.getAmount());
+                providerRequest.setCurrency(transaction.getCurrency());
+                providerRequest.setIdempotencyKey(idempotencyKey);
+                log.info("Set the amount and currency into the Request: {} {}"
+                        , providerRequest.getAmount(), providerRequest.getCurrency());
+
+                StripeProviderOrderResponse createOrderResponse =
                         paymentHelper.makeCreateOrderCall(providerRequest);
-      log.info("Call made to Stripe Provider to Create Order");
+                log.info("Call made to Stripe Provider to Create Order: {}",providerRequest);
 
-      transaction.setProviderReference(createOrderResponse.getId());
-      log.info("Set stripe create order id into DB: {}",transaction.getProviderReference());
+                //Stripe have created or not created a request because of breakages,
+                // it creates a new one or with the idempotency key
+                if (createOrderResponse != null) {
+                    transaction.setProviderReference(createOrderResponse.getId());
+                    transaction.setClientSecret(createOrderResponse.getClientSecret());
+                    transaction.setStatus(TransactionStatus.PENDING);
+                    paymentRepo.save(transaction);
+                }
 
-      transaction.setClientSecret(createOrderResponse.getClientSecret());
-      log.info("Set Stripe client secret into the DB");
+                PaymentResponse paymentResponse = modelMapper.map(transaction, PaymentResponse.class);
+                log.info("Mapped retried transaction to paymentResponse: {}", paymentResponse);
 
-      transaction.setStatus(TransactionStatus.PENDING);
-      log.info("Payment Status set to PENDING");
+                return paymentResponse;
 
-      paymentRepo.save(transaction);
-      log.info("Saved transaction detailes");
+            }
+            if (transaction.getStatus() == TransactionStatus.PENDING ||
+                                                transaction.getStatus() == TransactionStatus.SUCCESS) {
+                PaymentResponse paymentResponse = modelMapper.map(transaction, PaymentResponse.class);
+                log.info("Mapped transaction to paymentResponse for Pending and success squads: {}",paymentResponse);
 
-      PaymentResponse paymentResponse = modelMapper.map(transaction, PaymentResponse.class);
-      log.info("Mapped transaction information into PaymentResponse: ");
+                return paymentResponse;
+            }
+        }
 
-      return paymentResponse;
+        Transaction transaction = paymentRepo.findBytxnReference(txnReference)
+                .orElseThrow(() -> new StripeProcessingException(
+                        ErrorCodeEnum.INVALID_TRANSACTION_REFERENCE.getErrorCode(),
+                        ErrorCodeEnum.INVALID_TRANSACTION_REFERENCE.getErrorMessage(),
+                        HttpStatus.BAD_REQUEST));
+        log.info("Gotten Transaction with txnReference: {}", txnReference);
+
+        providerRequest = new StripeProviderCreateOrderRequest();
+        providerRequest.setAmount(transaction.getAmount());
+        providerRequest.setCurrency(transaction.getCurrency());
+        providerRequest.setIdempotencyKey(idempotencyKey);
+
+        StripeProviderOrderResponse createOrderResponse =
+                paymentHelper.makeCreateOrderCall(providerRequest);
+        log.info("Call made to Stripe Provider to Create Order");
+
+        transaction.setProviderReference(createOrderResponse.getId());
+        log.info("Set stripe create order id into DB: {}", transaction.getProviderReference());
+
+        transaction.setClientSecret(createOrderResponse.getClientSecret());
+        log.info("Set Stripe client secret into the DB");
+
+        transaction.setStatus(TransactionStatus.PENDING);
+        log.info("Payment Status set to PENDING");
+
+        paymentRepo.save(transaction);
+        log.info("Saved transaction");
+
+        PaymentResponse paymentResponse = modelMapper.map(transaction, PaymentResponse.class);
+        log.info("Mapped transaction information into PaymentResponse: ");
+
+        return paymentResponse;
 
     }
 
+    @Transactional
     @Override
     public PaymentResponse confirmPayment(String txnReference) {
 
-        Transaction  transaction = paymentRepo.findBytxnReference(txnReference)
+        int updatedStatus =
+                paymentRepo.updateStatus(txnReference, TransactionStatus.APPROVED, TransactionStatus.PENDING);
+        log.info("Confirm race check: {}", updatedStatus);
+
+        Transaction transaction = paymentRepo.findBytxnReference(txnReference)
                 .orElseThrow(() -> new StripeProcessingException(
                         ErrorCodeEnum.INVALID_TRANSACTION_REFERENCE.getErrorCode(),
                         ErrorCodeEnum.INVALID_TRANSACTION_REFERENCE.getErrorMessage(),
                         HttpStatus.BAD_REQUEST
                 ));
-        log.info(" Transaction with txnReference: {}",txnReference);
+        log.info(" Transaction with txnReference: {}", txnReference);
+
+        if (updatedStatus == 0) {
+            // Already SUCCESS? Return cached
+            if (transaction.getStatus() == TransactionStatus.SUCCESS) {
+                return modelMapper.map(transaction, PaymentResponse.class);
+            }
+
+            // Stuck at APPROVED with no confirm result? Proceed to Stripe below
+            if (transaction.getStatus() == TransactionStatus.APPROVED) {
+                log.info("Recovery: stuck at APPROVED, retrying Stripe confirm");
+                // Let's continue to confirm payment.
 
 
-        String providerReference = transaction.getProviderReference();
-        log.info("Got the provider Reference from the DB: {}",providerReference);
+            } else {
+                throw new StripeProcessingException(
+                        ErrorCodeEnum.INVALID_TRANSACTION_STATE.getErrorCode(),
+                        ErrorCodeEnum.INVALID_TRANSACTION_STATE.getErrorMessage()+transaction.getStatus(),
+                        HttpStatus.CONFLICT);
+            }
+        }
 
-        StripeProviderConfirmPaymentRequest paymentRequest = new StripeProviderConfirmPaymentRequest();
-        paymentRequest.setReturnUrl(Constant.RETURN_URL);
-        log.info("Return Url: {}",paymentRequest.getReturnUrl());
+                String providerReference = transaction.getProviderReference();
+                log.info("ProviderReference: {}",providerReference);
 
-        transaction.setStatus(TransactionStatus.APPROVED);
-        confirmPaymentHelper.makeConfirmOrderCall(providerReference, paymentRequest);
-        log.info("Request made to Stripe Provider to confirm Order: ");
 
-        transaction.setStatus(TransactionStatus.SUCCESS);
-        log.info("Payment set to Success");
+                if (providerReference == null) {
+                    throw new StripeProcessingException(
+                            ErrorCodeEnum.MISSING_PROVIDER_REFERENCE.getErrorCode(),
+                            ErrorCodeEnum.MISSING_PROVIDER_REFERENCE.getErrorMessage(),
+                            HttpStatus.BAD_REQUEST
+                    );
+                }
 
-        paymentRepo.save(transaction);
+                String idempotencyKey = txnReference + "_confirm";
 
-        PaymentResponse paymentResponse = modelMapper.map(transaction, PaymentResponse.class);
-        log.info("Mapped transaction details into PaymentResponse: ");
+                StripeProviderConfirmPaymentRequest paymentRequest = new StripeProviderConfirmPaymentRequest();
+                paymentRequest.setReturnUrl(Constant.RETURN_URL);
+                paymentRequest.setIdempotencyKey(idempotencyKey);
+                log.info("Return Url && Idempotency Key: {}", paymentRequest.getReturnUrl());
 
-        return paymentResponse;
+                confirmPaymentHelper.makeConfirmOrderCall(providerReference, paymentRequest);
+                log.info("Request made to Stripe Provider to confirm Order: ");
 
-    }
-}
+                transaction.setStatus(TransactionStatus.SUCCESS);
+                log.info("Payment set to Success");
+
+                paymentRepo.save(transaction);
+
+                PaymentResponse paymentResponse = modelMapper.map(transaction, PaymentResponse.class);
+                log.info("Mapped transaction details into PaymentResponse: ");
+
+                return paymentResponse;
+
+            }
+        }
+
+
