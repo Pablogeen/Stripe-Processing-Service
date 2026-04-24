@@ -25,16 +25,9 @@ public class RetryHelper {
     private final ModelMapper modelMapper;
 
 
-    public PaymentResponse createOrderRetry(String txnReference, String idempotencyKey) {
+    public PaymentResponse createOrderRetry(Transaction transaction, String idempotencyKey) {
 
         StripeProviderCreateOrderRequest providerRequest = new StripeProviderCreateOrderRequest();
-
-        Transaction transaction = paymentRepo.findBytxnReference(txnReference)
-                .orElseThrow(() -> new StripeProcessingException(
-                        ErrorCodeEnum.INVALID_TRANSACTION_REFERENCE.getErrorCode(),
-                        ErrorCodeEnum.INVALID_TRANSACTION_REFERENCE.getErrorMessage(),
-                        HttpStatus.BAD_REQUEST));
-        log.info("Gotten Transaction with txnReference: {}", txnReference);
         //Retry
         if (transaction.getStatus() == TransactionStatus.INITIATED && transaction.getProviderReference() == null) {
             // Query Stripe using our  idempotency key
@@ -79,4 +72,24 @@ public class RetryHelper {
     }
 
 
-}
+    public PaymentResponse confirmOrderRetry(Transaction transaction, String idempotencyKey) {
+
+
+        if (transaction.getStatus() == TransactionStatus.SUCCESS) {
+            return modelMapper.map(transaction, PaymentResponse.class);
+        }
+
+        // Stuck at APPROVED with no confirm result? Proceed to Stripe below
+        if (transaction.getStatus() == TransactionStatus.APPROVED) {
+            log.info("Recovery: stuck at APPROVED, retrying Stripe confirm");
+            // Let's continue to confirm payment.
+        }
+            throw new StripeProcessingException(
+                    ErrorCodeEnum.INVALID_TRANSACTION_STATE.getErrorCode(),
+                    ErrorCodeEnum.INVALID_TRANSACTION_STATE.getErrorMessage()+transaction.getStatus(),
+                    HttpStatus.CONFLICT);
+        }
+
+    }
+
+
