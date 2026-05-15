@@ -29,7 +29,7 @@ public class PaymentReconScheduler {
         log.info("Cut off Time: {}",cutoffTime);
 
         List<Transaction> payments =
-                transactionRepo.findByStatusNotAndCreatedAtBefore(TransactionStatus.SUCCESS, cutoffTime);
+                transactionRepo.findByStatusNotAndCreationDateBefore(TransactionStatus.SUCCESS, cutoffTime);
         log.info("Got all transactions that are of not success status and created in the last 24 hours: {}", payments.size());
 
         if (payments.isEmpty()) {
