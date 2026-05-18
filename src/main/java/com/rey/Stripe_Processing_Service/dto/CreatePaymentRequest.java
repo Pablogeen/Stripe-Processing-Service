@@ -1,6 +1,7 @@
 package com.rey.Stripe_Processing_Service.dto;
 
 
+import com.rey.Stripe_Processing_Service.helper.ValidCurrency;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 
@@ -32,9 +33,6 @@ public class CreatePaymentRequest {
     private Integer amount;
 
     @NotBlank(message = "currency is required")
-    @Pattern(
-            regexp = "^[A-Z]{3}$",
-            message = "currency must be a valid 3-letter uppercase ISO 4217 code (e.g. USD, GHS, EUR)"
-    )
+    @ValidCurrency(message = "CURRENCY NOT SUPPORTED")
     private String currency;
 }
