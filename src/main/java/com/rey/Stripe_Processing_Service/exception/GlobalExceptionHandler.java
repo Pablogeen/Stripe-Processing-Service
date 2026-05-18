@@ -2,9 +2,12 @@ package com.rey.Stripe_Processing_Service.exception;
 
 import com.rey.Stripe_Processing_Service.constants.ErrorCodeEnum;
 import com.rey.Stripe_Processing_Service.dto.ErrorResponse;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -34,15 +37,33 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationException(MethodArgumentNotValidException ex) {
-        log.error("Handing Invalid Request");
         String message = Optional.ofNullable(ex.getBindingResult().getFieldError())
                 .map(FieldError::getDefaultMessage)
                 .orElse("Validation error");
+        log.warn("Validation failed — {}", message);
+        return ResponseEntity.badRequest().body(new ErrorResponse(
+                ErrorCodeEnum.INVALID_REQUEST.getErrorCode(), message));
+    }
 
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleMessageNotReadable(HttpMessageNotReadableException ex) {
+        log.warn("Malformed or unreadable request body", ex);
         return ResponseEntity.badRequest().body(new ErrorResponse(
                 ErrorCodeEnum.INVALID_REQUEST.getErrorCode(),
-                message
-        ));
+                "INVALID REQUEST"));
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex) {
+        String message = ex.getConstraintViolations()
+                .stream()
+                .map(ConstraintViolation::getMessage)
+                .findFirst()
+                .orElse("Validation error");
+        log.warn("Constraint violation — {}", message);
+        return ResponseEntity.badRequest().body(new ErrorResponse(
+                ErrorCodeEnum.INVALID_REQUEST.getErrorCode(),
+                message));
     }
 
 
