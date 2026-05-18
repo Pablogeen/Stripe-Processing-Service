@@ -13,20 +13,28 @@ public class CreatePaymentRequest {
 
     @NotNull(message = "paymentMethodId is required")
     @Min(value = 1, message = "paymentMethodId must be greater than 0")
+    @Max(value = 999999, message = "paymentMethodId is invalid")
     private Integer paymentMethodId;
 
     @NotNull(message = "providerId is required")
     @Min(value = 1, message = "providerId must be greater than 0")
+    @Max(value = 999999, message = "providerId is invalid")
     private Integer providerId;
 
     @NotNull(message = "paymentTypeId is required")
     @Min(value = 1, message = "paymentTypeId must be greater than 0")
+    @Max(value = 999999, message = "paymentTypeId is invalid")
     private Integer paymentTypeId;
 
     @NotNull(message = "amount is required")
+    @Positive(message = "amount must be greater than zero")
+    @Max(value = 99999999, message = "amount exceeds maximum allowed limit") // adjust to your business rule
     private Integer amount;
 
     @NotBlank(message = "currency is required")
-    @Size(min = 3, max = 3, message = "currency must be a 3-letter ISO code")
+    @Pattern(
+            regexp = "^[A-Z]{3}$",
+            message = "currency must be a valid 3-letter uppercase ISO 4217 code (e.g. USD, GHS, EUR)"
+    )
     private String currency;
 }
